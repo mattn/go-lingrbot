@@ -40,7 +40,9 @@ var re = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(
 
 func getTitle(client *http.Client, url string) string {
 	r, _ := client.Get(url)
-	if !strings.HasPrefix(r.Header.Get("Content-Type"), "text/html") {
+
+	ct := r.Header.Get("Content-Type")
+	if !strings.HasPrefix(ct, "text/html") && !strings.HasPrefix(ct, "application/xhtml+xml") {
 		return ""
 	}
 	doc, _ := html.Parse(r.Body)
