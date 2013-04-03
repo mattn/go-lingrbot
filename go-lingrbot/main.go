@@ -2,12 +2,12 @@ package lingrbot
 
 import (
 	"appengine"
-	"appengine/urlfetch"
-	"code.google.com/p/go.net/html"
+	//"appengine/urlfetch"
+	//"code.google.com/p/go.net/html"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"regexp"
+	//"regexp"
 	"strings"
 )
 
@@ -38,7 +38,7 @@ func init() {
 				var status Status
 
 				c := appengine.NewContext(r)
-				u := urlfetch.Client(c)
+				//u := urlfetch.Client(c)
 				e := json.NewDecoder(r.Body).Decode(&status)
 				if e != nil {
 					c.Errorf("%s", e.Error())
