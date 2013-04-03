@@ -2,12 +2,13 @@ package lingrbot
 
 import (
 	"appengine"
-	//"appengine/urlfetch"
-	//"code.google.com/p/go.net/html"
+	"appengine/urlfetch"
+	"code.google.com/p/go.net/html"
+	"code.google.com/p/mahonia"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	//"regexp"
+	"regexp"
 	"strings"
 )
 
@@ -38,7 +39,7 @@ func init() {
 				var status Status
 
 				c := appengine.NewContext(r)
-				//u := urlfetch.Client(c)
+				u := urlfetch.Client(c)
 				e := json.NewDecoder(r.Body).Decode(&status)
 				if e != nil {
 					c.Errorf("%s", e.Error())
@@ -49,8 +50,7 @@ func init() {
 					tokens := strings.SplitN(event.Message.Text, " ", 2)
 					if tokens[0] == "!go" {
 						w.Write([]byte("日本goでok"))
-					} else {
-						/*
+					} else if strings.HasPrefix(r.Header.Get("Content-Type"), "text/html") {
 						re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
 						ss := re.FindAllStringSubmatch(event.Message.Text, -1)
 
@@ -60,10 +60,37 @@ func init() {
 							r, _ := u.Get(url)
 							doc, _ := html.Parse(r.Body)
 
+							charset := ""
 							var f func(*html.Node)
 							f = func(n *html.Node) {
+								if charset == "" && n.Type == html.ElementNode && n.Data == "meta" {
+									kv := make(map[string]string)
+									for _, a := range n.Attr {
+										kv[strings.ToLower(a.Key)] = strings.ToLower(a.Val)
+									}
+									if v, ok := kv["http-equiv"]; ok {
+										if v == "content-type" {
+											if v, ok = kv["content"]; ok {
+												for _, t := range strings.Split(v, ";") {
+													tt := strings.Split(strings.TrimSpace(t), "=")
+													if len(tt) == 2 && strings.ToLower(tt[0]) == "charset" {
+														charset = tt[1]
+														break
+													}
+												}
+											}
+										}
+									}
+									if v, ok := kv["charset"]; ok {
+											charset = v
+									}
+								}
 								if n.Type == html.ElementNode && n.Data == "title" {
-									results += "Title: " + n.FirstChild.Data + "\n"
+									if charset == "" {
+										charset = "utf-8"
+									}
+									title := mahonia.NewDecoder(charset).ConvertString(n.FirstChild.Data)
+									results += "Title: " + title + "\n"
 									return
 								}
 								for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -75,7 +102,6 @@ func init() {
 						if len(results) > 0 {
 							w.Write([]byte(results))
 						}
-						*/
 					}
 				}
 			} else {
