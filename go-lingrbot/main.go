@@ -50,6 +50,7 @@ func init() {
 					if tokens[0] == "!go" {
 						w.Write([]byte("日本goでok"))
 					} else {
+						/*
 						re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
 						ss := re.FindAllStringSubmatch(event.Message.Text, -1)
 
@@ -74,6 +75,7 @@ func init() {
 						if len(results) > 0 {
 							w.Write([]byte(results))
 						}
+						*/
 					}
 				}
 			} else {
