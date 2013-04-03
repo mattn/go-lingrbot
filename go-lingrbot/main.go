@@ -2,9 +2,12 @@ package lingrbot
 
 import (
 	"appengine"
+	"appengine/urlfetch"
+	"code.google.com/p/go.net/html"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -35,6 +38,7 @@ func init() {
 				var status Status
 
 				c := appengine.NewContext(r)
+				u := urlfetch.Client(c)
 				e := json.NewDecoder(r.Body).Decode(&status)
 				if e != nil {
 					c.Errorf("%s", e.Error())
@@ -45,6 +49,31 @@ func init() {
 					tokens := strings.SplitN(event.Message.Text, " ", 2)
 					if tokens[0] == "!go" {
 						w.Write([]byte("日本goでok"))
+					} else {
+						re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
+						ss := re.FindAllStringSubmatch(event.Message.Text, -1)
+
+						results := ""
+						for _, s := range ss {
+							url := s[1]
+							r, _ := u.Get(url)
+							doc, _ := html.Parse(r.Body)
+
+							var f func(*html.Node)
+							f = func(n *html.Node) {
+								if n.Type == html.ElementNode && n.Data == "title" {
+									results += "Title: " + n.FirstChild.Data + "\n"
+									return
+								}
+								for c := n.FirstChild; c != nil; c = c.NextSibling {
+									f(c)
+								}
+							}
+							f(doc)
+						}
+						if len(results) > 0 {
+							w.Write([]byte(results))
+						}
 					}
 				}
 			} else {
