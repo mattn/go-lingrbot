@@ -136,6 +136,8 @@ func init() {
 								results = string(runes[0:999])
 							}
 							w.Write([]byte(results))
+						} else {
+							w.Write([]byte("No such documents"))
 						}
 					} else {
 						ss := re.FindAllStringSubmatch(event.Message.Text, -1)
