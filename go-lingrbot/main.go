@@ -38,7 +38,7 @@ type Message struct {
 
 var re = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
 
-func getTitle(client *http.Client, url string) string {
+func urlTitle(client *http.Client, url string) string {
 	r, _ := client.Get(url)
 
 	ct := r.Header.Get("Content-Type")
@@ -86,6 +86,28 @@ func getTitle(client *http.Client, url string) string {
 	return title
 }
 
+func goDoc(client *http.Client, url string) string {
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("User-Agent", "curl/7.16.2")
+	req.Header.Set("Accept", "text/plain")
+	res, _ := client.Do(req)
+	if res.StatusCode != 200 {
+		return ""
+	}
+	b, _ := ioutil.ReadAll(res.Body)
+	lines := strings.Split(string(b), "\n")
+
+	var doc []string
+	for n := 5; n < len(lines); n++ {
+		line := lines[n]
+		if len(line) > 0 && line[0] != ' ' {
+			break
+		}
+		doc = append(doc, strings.TrimSpace(line))
+	}
+	return strings.TrimSpace(strings.Join(doc, "\n"))
+}
+
 func init() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
@@ -104,12 +126,23 @@ func init() {
 					tokens := strings.SplitN(event.Message.Text, " ", 2)
 					if tokens[0] == "!go" {
 						w.Write([]byte("日本goでok"))
+					} else if len(tokens) == 2 && tokens[0] == "!godoc" {
+						url := "http://godoc.org/" + tokens[1]
+						results := goDoc(u, url)
+						if len(results) > 0 {
+							results = url + "\n" + results
+							runes := []rune(results)
+							if len(runes) > 1000 {
+								results = string(runes[0:999])
+							}
+							w.Write([]byte(results))
+						}
 					} else {
 						ss := re.FindAllStringSubmatch(event.Message.Text, -1)
 
 						results := ""
 						for _, s := range ss {
-							if title := getTitle(u, s[1]); title != "" {
+							if title := urlTitle(u, s[1]); title != "" {
 								results += "Title: " + title + "\n"
 							}
 						}
