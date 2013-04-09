@@ -40,11 +40,11 @@ type Message struct {
 	Text            string `json:"text"`
 }
 
-var godoc = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
-var plus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+\+\s*$`)
-var minus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)--\s*$`)
-var pluseq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
-var minuseq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
+var reUrl = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
+var rePlus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+\+\s*$`)
+var reMinus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)--\s*$`)
+var rePlusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
+var reMinusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
 
 func atoi(a string) int {
 	i, _ := strconv.Atoi(a)
@@ -122,20 +122,20 @@ func goDoc(client *http.Client, url string) string {
 }
 
 func parsePlusPlus(message string, callback func(nick string, plus int)) bool {
-	if plus.MatchString(message) {
-		m := plus.FindStringSubmatch(message)
+	if rePlus.MatchString(message) {
+		m := rePlus.FindStringSubmatch(message)
 		callback(m[1], 1)
 		return true
-	} else if minus.MatchString(message) {
-		m := minus.FindStringSubmatch(message)
+	} else if reMinus.MatchString(message) {
+		m := reMinus.FindStringSubmatch(message)
 		callback(m[1], -1)
 		return true
-	} else if pluseq.MatchString(message) {
-		m := pluseq.FindStringSubmatch(message)
+	} else if rePlusEq.MatchString(message) {
+		m := rePlusEq.FindStringSubmatch(message)
 		callback(m[1], atoi(m[2]))
 		return true
-	} else if minuseq.MatchString(message) {
-		m := minuseq.FindStringSubmatch(message)
+	} else if reMinusEq.MatchString(message) {
+		m := reMinusEq.FindStringSubmatch(message)
 		callback(m[1], -atoi(m[2]))
 		return true
 	}
@@ -156,35 +156,28 @@ func init() {
 					return
 				}
 				w.Header().Set("Content-Type", "text/plain; charset=utf8")
+				results := ""
 				for _, event := range status.Events {
 					tokens := strings.SplitN(event.Message.Text, " ", 2)
 					if tokens[0] == "!go" {
-						w.Write([]byte("日本goでok"))
+						results = "日本goでok\n"
 					} else if len(tokens) == 2 && tokens[0] == "!godoc" {
 						url := "http://godoc.org/" + tokens[1]
-						results := goDoc(u, url)
+						results = goDoc(u, url)
 						if len(results) > 0 {
-							results = url + "\n" + results
-							runes := []rune(results)
-							if len(runes) > 1000 {
-								results = string(runes[0:999])
-							}
-							w.Write([]byte(results))
+							results = url + "\n" + results + "\n"
 						} else {
-							w.Write([]byte("No such documents"))
+							results = "No such documents\n"
 						}
 					} else {
-						ss := godoc.FindAllStringSubmatch(event.Message.Text, -1)
+						ss := reUrl.FindAllStringSubmatch(event.Message.Text, -1)
 
-						results := ""
 						for _, s := range ss {
 							if title := urlTitle(u, s[1]); title != "" {
 								results += "Title: " + title + "\n"
 							}
 						}
-						if len(results) > 0 {
-							w.Write([]byte(results))
-						} else {
+						if len(results) == 0 {
 							parsePlusPlus(event.Message.Text, func(nick string, plus int) {
 								plusplus := &PlusPlus{nick, 0}
 								key := datastore.NewKey(c, "PlusPlus", nick, 0, nil)
@@ -192,10 +185,17 @@ func init() {
 								if err == nil || err == datastore.ErrNoSuchEntity {
 									plusplus.Count += plus
 									_, err = datastore.Put(c, key, plusplus)
-									w.Write([]byte(fmt.Sprintf("%s (%d)\n", plusplus.Nickname, plusplus.Count)))
+									results += fmt.Sprintf("%s (%d)\n", plusplus.Nickname, plusplus.Count)
 								}
 							})
 						}
+					}
+					if len(results) > 0 {
+						results = strings.TrimRight(results, "\n")
+						if runes := []rune(results); len(runes) > 1000 {
+							results = string(runes[0:999])
+						}
+						w.Write([]byte(results))
 					}
 				}
 			} else {
