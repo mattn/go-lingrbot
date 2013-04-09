@@ -2,18 +2,22 @@ package lingrbot
 
 import (
 	"appengine"
+	"appengine/datastore"
 	"appengine/urlfetch"
 	"code.google.com/p/go.net/html"
 	"code.google.com/p/mahonia"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 type PlusPlus struct {
-	Count int
+	Nickname string
+	Count    int
 }
 
 type Status struct {
@@ -36,7 +40,16 @@ type Message struct {
 	Text            string `json:"text"`
 }
 
-var re = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
+var godoc = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
+var plus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+\+\s*$`)
+var minus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)--\s*$`)
+var pluseq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
+var minuseq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
+
+func atoi(a string) int {
+	i, _ := strconv.Atoi(a)
+	return i
+}
 
 func urlTitle(client *http.Client, url string) string {
 	r, _ := client.Get(url)
@@ -108,6 +121,27 @@ func goDoc(client *http.Client, url string) string {
 	return strings.TrimSpace(strings.Join(doc, "\n"))
 }
 
+func parsePlusPlus(message string, callback func(nick string, plus int)) bool {
+	if plus.MatchString(message) {
+		m := plus.FindStringSubmatch(message)
+		callback(m[1], 1)
+		return true
+	} else if minus.MatchString(message) {
+		m := minus.FindStringSubmatch(message)
+		callback(m[1], -1)
+		return true
+	} else if pluseq.MatchString(message) {
+		m := pluseq.FindStringSubmatch(message)
+		callback(m[1], atoi(m[2]))
+		return true
+	} else if minuseq.MatchString(message) {
+		m := minuseq.FindStringSubmatch(message)
+		callback(m[1], -atoi(m[2]))
+		return true
+	}
+	return false
+}
+
 func init() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
@@ -140,7 +174,7 @@ func init() {
 							w.Write([]byte("No such documents"))
 						}
 					} else {
-						ss := re.FindAllStringSubmatch(event.Message.Text, -1)
+						ss := godoc.FindAllStringSubmatch(event.Message.Text, -1)
 
 						results := ""
 						for _, s := range ss {
@@ -150,6 +184,17 @@ func init() {
 						}
 						if len(results) > 0 {
 							w.Write([]byte(results))
+						} else {
+							parsePlusPlus(event.Message.Text, func(nick string, plus int) {
+								plusplus := &PlusPlus{nick, 0}
+								key := datastore.NewKey(c, "PlusPlus", nick, 0, nil)
+								err := datastore.Get(c, key, plusplus)
+								if err == nil || err == datastore.ErrNoSuchEntity {
+									plusplus.Count += plus
+									_, err = datastore.Put(c, key, plusplus)
+									w.Write([]byte(fmt.Sprintf("%s (%d)\n", plusplus.Nickname, plusplus.Count)))
+								}
+							})
 						}
 					}
 				}
