@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -38,6 +39,16 @@ type Message struct {
 	SpeakerId       string `json:"speaker_id"`
 	Nickname        string `json:"nickname"`
 	Text            string `json:"text"`
+}
+
+type PlaygroundEvent struct {
+	Message string `json:"Message"`
+	Delay int `json:"Delay"`
+}
+
+type resPlayground struct {
+	Errors string `json:"Errors"`
+	Events []PlaygroundEvent `json:"Events"`
 }
 
 var reUrl = regexp.MustCompile(`(?:^|[^a-zA-Z0-9])(https?://[a-zA-Z][a-zA-Z0-9_-]*(\.[a-zA-Z0-9][a-zA-Z0-9_-]*)*(:\d+)?(?:/[a-zA-Z0-9_/.\-+%#?&=;@$,!*~]*)?)`)
@@ -121,6 +132,30 @@ func goDoc(client *http.Client, url string) string {
 	return strings.TrimSpace(strings.Join(doc, "\n"))
 }
 
+func goPlayground(client *http.Client, content string) string {
+	params := make(url.Values)
+	params.Set("version", "2")
+	params.Set("body", content)
+	res, e := client.Post(
+		"http://play.golang.org/compile",
+		"application/x-www-form-urlencoded",
+		strings.NewReader(params.Encode()))
+	if e != nil {
+		return ""
+	}
+	defer res.Body.Close()
+
+	var result resPlayground
+	e = json.NewDecoder(res.Body).Decode(&result)
+	if e != nil {
+		return ""
+	}
+	if result.Errors != "" {
+		return result.Errors
+	}
+	return result.Events[0].Message
+}
+
 func parsePlusPlus(message string, callback func(nick string, plus int)) bool {
 	if rePlus.MatchString(message) {
 		m := rePlus.FindStringSubmatch(message)
@@ -160,7 +195,7 @@ func init() {
 				for _, event := range status.Events {
 					tokens := strings.SplitN(event.Message.Text, " ", 2)
 					if tokens[0] == "!go" {
-						results = "日本goでok\n"
+						results = goPlayground(u, tokens[1])
 					} else if len(tokens) == 2 && tokens[0] == "!godoc" {
 						url := "http://godoc.org/" + tokens[1]
 						results = goDoc(u, url)
