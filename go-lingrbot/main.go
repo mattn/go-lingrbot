@@ -56,7 +56,8 @@ var rePlus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+\+\s*$`)
 var reMinus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)--\s*$`)
 var rePlusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
 var reMinusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
-var reSuddenDeath = regexp.MustCompile(`^突然の.+$`)
+var reSuddenDeath1 = regexp.MustCompile(`^突然の.+$`)
+var reSuddenDeath2 = regexp.MustCompile(`^>(.+)<$`)
 
 func atoi(a string) int {
 	i, _ := strconv.Atoi(a)
@@ -250,8 +251,11 @@ func init() {
 						} else {
 							results = "No such documents\n"
 						}
-					} else if reSuddenDeath.MatchString(event.Message.Text) {
+					} else if reSuddenDeath1.MatchString(event.Message.Text) {
 						results += suddenDeath(event.Message.Text)
+					} else if reSuddenDeath2.MatchString(event.Message.Text) {
+						m := reMinusEq.FindStringSubmatch(event.Message.Text)
+						results += suddenDeath(m[1])
 					} else {
 						ss := reUrl.FindAllStringSubmatch(event.Message.Text, -1)
 
