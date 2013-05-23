@@ -254,7 +254,7 @@ func init() {
 					} else if reSuddenDeath1.MatchString(event.Message.Text) {
 						results += suddenDeath(event.Message.Text)
 					} else if reSuddenDeath2.MatchString(event.Message.Text) {
-						m := reMinusEq.FindStringSubmatch(event.Message.Text)
+						m := reSuddenDeath2.FindStringSubmatch(event.Message.Text)
 						results += suddenDeath(m[1])
 					} else {
 						ss := reUrl.FindAllStringSubmatch(event.Message.Text, -1)
