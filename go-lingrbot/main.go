@@ -58,7 +58,7 @@ var rePlusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
 var reMinusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
 var reSuddenDeath1 = regexp.MustCompile(`^((?:突然の)*)(突然の.+)$`)
 var reSuddenDeath2 = regexp.MustCompile(`^(>+)([^<]+)(<+)$`)
-var reSuddenDeath3 = regexp.MustCompile(`^<(.+)>$`)
+var reSuddenDeath3 = regexp.MustCompile(`^<([^a-zA-Z0-9>]+)>$`)
 
 func atoi(a string) int {
 	i, _ := strconv.Atoi(a)
