@@ -57,7 +57,7 @@ var reMinus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)--\s*$`)
 var rePlusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
 var reMinusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
 var reSuddenDeath1 = regexp.MustCompile(`^突然の.+$`)
-var reSuddenDeath2 = regexp.MustCompile(`^>(.+)<$`)
+var reSuddenDeath2 = regexp.MustCompile(`^(>+)([^<]+)(<+)$`)
 
 func atoi(a string) int {
 	i, _ := strconv.Atoi(a)
@@ -240,31 +240,40 @@ func init() {
 				w.Header().Set("Content-Type", "text/plain; charset=utf8")
 				results := ""
 				for _, event := range status.Events {
+					result := ""
 					tokens := strings.SplitN(event.Message.Text, " ", 2)
 					if tokens[0] == "!go" {
-						results = goPlayground(u, tokens[1])
+						result = goPlayground(u, tokens[1])
 					} else if len(tokens) == 2 && tokens[0] == "!godoc" {
 						url := "http://godoc.org/" + tokens[1]
-						results = goDoc(u, url)
-						if len(results) > 0 {
-							results = url + "\n" + results + "\n"
+						result = goDoc(u, url)
+						if len(result) > 0 {
+							result = url + "\n" + result + "\n"
 						} else {
-							results = "No such documents\n"
+							result = "No such documents\n"
 						}
 					} else if reSuddenDeath1.MatchString(event.Message.Text) {
-						results += suddenDeath(event.Message.Text)
+						result = suddenDeath(event.Message.Text)
 					} else if reSuddenDeath2.MatchString(event.Message.Text) {
 						m := reSuddenDeath2.FindStringSubmatch(event.Message.Text)
-						results += suddenDeath(m[1])
-					} else {
+						if len(m[1]) == len(m[3]) {
+							result = m[2]
+							nl := len(m[1])
+							for n := 0; n < nl; n++ {
+								result = suddenDeath(strings.TrimRight(result, "\n"))
+							}
+						}
+					}
+
+					if result == "" {
 						ss := reUrl.FindAllStringSubmatch(event.Message.Text, -1)
 
 						for _, s := range ss {
 							if title := urlTitle(u, s[1]); title != "" {
-								results += "Title: " + title + "\n"
+								result += "Title: " + title + "\n"
 							}
 						}
-						if len(results) == 0 {
+						if len(result) == 0 {
 							parsePlusPlus(event.Message.Text, func(nick string, plus int) {
 								plusplus := &PlusPlus{nick, 0}
 								key := datastore.NewKey(c, "PlusPlus", nick, 0, nil)
@@ -272,18 +281,19 @@ func init() {
 								if err == nil || err == datastore.ErrNoSuchEntity {
 									plusplus.Count += plus
 									_, err = datastore.Put(c, key, plusplus)
-									results += fmt.Sprintf("%s (%d)\n", plusplus.Nickname, plusplus.Count)
+									result += fmt.Sprintf("%s (%d)\n", plusplus.Nickname, plusplus.Count)
 								}
 							})
 						}
 					}
-					if len(results) > 0 {
-						results = strings.TrimRight(results, "\n")
-						if runes := []rune(results); len(runes) > 1000 {
-							results = string(runes[0:999])
-						}
-						w.Write([]byte(results))
+					results += result
+				}
+				if len(results) > 0 {
+					results = strings.TrimRight(results, "\n")
+					if runes := []rune(results); len(runes) > 1000 {
+						results = string(runes[0:999])
 					}
+					w.Write([]byte(results))
 				}
 			} else {
 				w.Header().Set("Content-Type", "text/html; charset=utf8")
