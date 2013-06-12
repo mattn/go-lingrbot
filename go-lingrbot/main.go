@@ -56,7 +56,7 @@ var rePlus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+\+\s*$`)
 var reMinus = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)--\s*$`)
 var rePlusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\+=([0-9])\s*$`)
 var reMinusEq = regexp.MustCompile(`^\s*([a-zA-Z0-9_{^}]+)\-=([0-9])\s*$`)
-var reSuddenDeath1 = regexp.MustCompile(`^((?:突然の)*)(.+)$`)
+var reSuddenDeath1 = regexp.MustCompile(`^((?:突然の)*)(突然の.+)$`)
 var reSuddenDeath2 = regexp.MustCompile(`^(>+)([^<]+)(<+)$`)
 var reSuddenDeath3 = regexp.MustCompile(`^<(.+)>$`)
 
