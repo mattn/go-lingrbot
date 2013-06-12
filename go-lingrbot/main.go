@@ -216,11 +216,11 @@ func suddenDeath(msg string) string {
 		}
 	}
 
-	ret := "＿" + strings.Repeat("人", maxWidth / 2) + "＿\n"
+	ret := "＿" + strings.Repeat("人", maxWidth / 2 + 2) + "＿\n"
 	for i, line := range lines {
-		ret += "＞" + line + strings.Repeat(" ", maxWidth - widths[i]) + "＜\n"
+		ret += "＞　" + line + strings.Repeat(" ", maxWidth - widths[i]) + "　＜\n"
 	}
-	ret += "￣" + strings.Repeat("Ｙ", maxWidth / 2) + "￣\n"
+	ret += "￣" + strings.Repeat("Ｙ", maxWidth / 2 + 2) + "￣\n"
 	return ret
 }
 
