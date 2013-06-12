@@ -270,7 +270,8 @@ func init() {
 							}
 						}
 					} else if reSuddenDeath3.MatchString(event.Message.Text) {
-						result = event.Message.Text + " ... ってじっちゃんが言ってた"
+						m := reSuddenDeath3.FindStringSubmatch(event.Message.Text)
+						result = m[1] + " ... ってじっちゃんが言ってた"
 					}
 
 					if result == "" {
