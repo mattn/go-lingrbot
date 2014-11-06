@@ -4,10 +4,10 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/urlfetch"
-	"code.google.com/p/go.net/html"
 	"code.google.com/p/mahonia"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -43,11 +43,11 @@ type Message struct {
 
 type PlaygroundEvent struct {
 	Message string `json:"Message"`
-	Delay int `json:"Delay"`
+	Delay   int    `json:"Delay"`
 }
 
 type resPlayground struct {
-	Errors string `json:"Errors"`
+	Errors string            `json:"Errors"`
 	Events []PlaygroundEvent `json:"Events"`
 }
 
@@ -198,7 +198,7 @@ func runeWidth(r rune) int {
 
 func strWidth(str string) int {
 	r := 0
-	for _, c := range ([]rune(str)) {
+	for _, c := range []rune(str) {
 		r += runeWidth(c)
 	}
 	return r
@@ -217,11 +217,11 @@ func suddenDeath(msg string) string {
 		}
 	}
 
-	ret := "＿" + strings.Repeat("人", maxWidth / 2 + 2) + "＿\n"
+	ret := "＿" + strings.Repeat("人", maxWidth/2+2) + "＿\n"
 	for i, line := range lines {
-		ret += "＞　" + line + strings.Repeat(" ", maxWidth - widths[i]) + "　＜\n"
+		ret += "＞　" + line + strings.Repeat(" ", maxWidth-widths[i]) + "　＜\n"
 	}
-	ret += "￣" + strings.Repeat("Ｙ", maxWidth / 2 + 2) + "￣\n"
+	ret += "￣" + strings.Repeat("Ｙ", maxWidth/2+2) + "￣\n"
 	return ret
 }
 
@@ -256,7 +256,7 @@ func init() {
 					} else if reSuddenDeath1.MatchString(event.Message.Text) {
 						m := reSuddenDeath1.FindStringSubmatch(event.Message.Text)
 						result = m[2]
-						nl := len([]rune(m[1])) / 3 + 1
+						nl := len([]rune(m[1]))/3 + 1
 						for n := 0; n < nl; n++ {
 							result = suddenDeath(strings.TrimRight(result, "\n"))
 						}
