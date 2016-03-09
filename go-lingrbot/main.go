@@ -4,9 +4,9 @@ import (
 	"appengine"
 	"appengine/datastore"
 	"appengine/urlfetch"
-	"code.google.com/p/mahonia"
 	"encoding/json"
 	"fmt"
+	"github.com/mattn/go-encoding"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
@@ -102,7 +102,11 @@ func urlTitle(client *http.Client, url string) string {
 			if charset == "" {
 				charset = "utf-8"
 			}
-			title = mahonia.NewDecoder(charset).ConvertString(n.FirstChild.Data)
+			if enc := encoding.GetEncoding(charset); enc != nil {
+				if s, err := enc.NewDecoder().String(n.FirstChild.Data); err == nil {
+					title = s
+				}
+			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			f(c)
